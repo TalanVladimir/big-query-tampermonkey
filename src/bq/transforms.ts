@@ -7,7 +7,15 @@ import {
 import {
   parseFromQuery,
   replaceQualifiedBackticksWithDbtRef,
+  trimTrailingSpacesPerLine,
 } from './parse_sql';
+
+/**
+ * Normalizuoja BQ nukopijuotą tekstą prieš transformaciją.
+ */
+function normalizeInputSql(sql: string): string {
+  return trimTrailingSpacesPerLine(sql);
+}
 
 function buildSelectBlockLower(
   fromLine: string,
@@ -34,7 +42,7 @@ function withEditorTrailingNewlines(sql: string): string {
  * Kopijavimui: tik `` `...` `` → `` {{ ref('...') }} `` (visa kita lieka).
  */
 export function transformToDbtRef(sql: string): string {
-  const converted = replaceQualifiedBackticksWithDbtRef(sql);
+  const converted = replaceQualifiedBackticksWithDbtRef(normalizeInputSql(sql));
 
   if (!converted.includes("{{ ref(")) {
     throw new Error(
@@ -49,7 +57,7 @@ export function transformToDbtRef(sql: string): string {
  * Mažosiomis raidėmis, su *, partition_date filtru ir užkomentuotu limit.
  */
 export function transformToLowerWithPartition(sql: string): string {
-  const parsed = parseFromQuery(sql);
+  const parsed = parseFromQuery(normalizeInputSql(sql));
   if (!parsed) {
     throw new Error('Nepavyko rasti FROM dalies užklausoje.');
   }
@@ -64,7 +72,7 @@ export function transformToLowerWithPartition(sql: string): string {
  * Mažosiomis raidėmis, su * ir scd_is_active filtru (SCD užklausoms).
  */
 export function transformToScdActiveLow(sql: string): string {
-  const parsed = parseFromQuery(sql);
+  const parsed = parseFromQuery(normalizeInputSql(sql));
   if (!parsed) {
     throw new Error('Nepavyko rasti FROM dalies užklausoje.');
   }

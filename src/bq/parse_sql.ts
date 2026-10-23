@@ -19,6 +19,29 @@ const CHAINED_BACKTICK_TABLE_REGEX = /`[^`]+`(?:\.`[^`]+`)+/g;
 /** `project.dataset.table` */
 const BACKTICK_IDENTIFIER_REGEX = /`([^`]+)`/g;
 
+const LINE_LETTER_REGEX = /[A-Za-zĄČĘĖĮŠŲŪŽąčęėįšųūž]/;
+
+const TRAILING_SPACES_REGEX = /[ \t\u00a0]+$/u;
+
+const LEADING_SPACES_REGEX = /^[ \t\u00a0]+/u;
+
+/**
+ * Pašalina tarpus eilutės gale; jei eilutėje nėra raidžių – ir pradžioje.
+ */
+export function trimTrailingSpacesPerLine(sql: string): string {
+  return sql
+    .split(/\r\n|\r|\n/)
+    .map(line => {
+      const withoutTrailing = line.replace(TRAILING_SPACES_REGEX, '');
+      if (!LINE_LETTER_REGEX.test(withoutTrailing)) {
+        return withoutTrailing.replace(LEADING_SPACES_REGEX, '');
+      }
+
+      return withoutTrailing;
+    })
+    .join('\n');
+}
+
 /**
  * `proj.dataset.table` be backtick (BigQuery explorer kartais taip įrašo).
  */
