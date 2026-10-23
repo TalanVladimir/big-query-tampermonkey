@@ -1,5 +1,8 @@
 import { LIMIT_COMMENT, PARTITION_WHERE, SCD_ACTIVE_WHERE } from '../constants';
-import { parseFromQuery, toDbtRefFromTarget } from './parse_sql';
+import {
+  parseFromQuery,
+  replaceQualifiedBackticksWithDbtRef,
+} from './parse_sql';
 
 function buildSelectBlockLower(
   fromLine: string,
@@ -15,35 +18,17 @@ function buildSelectBlockLower(
   return lines.join('\n');
 }
 
-function buildSelectBlockDbtRef(
-  fromLine: string,
-  whereLine: string,
-  orderBy: string | null,
-): string {
-  const lines = ['SELECT', '  *', `FROM ${fromLine}`, whereLine.toLowerCase()];
-
-  if (orderBy) {
-    lines.push(orderBy.toLowerCase());
-  }
-
-  return lines.join('\n');
-}
-
 /**
- * Konvertuoja užklausą į dbt ref formatą (kopijavimui).
+ * Kopijavimui: tik `` `...` `` → `` {{ ref('...') }} `` (visa kita lieka).
  */
 export function transformToDbtRef(sql: string): string {
-  const parsed = parseFromQuery(sql);
-  if (!parsed) {
-    throw new Error('Nepavyko rasti FROM dalies užklausoje.');
+  const converted = replaceQualifiedBackticksWithDbtRef(sql);
+
+  if (converted === sql && !/`[^`]*\.[^`]+`/.test(sql)) {
+    throw new Error('Nerasta kvalifikuotų lentelių su backtick (`proj.dataset.lentele`).');
   }
 
-  const fromLine = toDbtRefFromTarget(parsed.fromTarget);
-  const whereLine = parsed.otherWhere
-    ? `where ${parsed.otherWhere}`
-    : PARTITION_WHERE;
-
-  return buildSelectBlockDbtRef(fromLine, whereLine, parsed.orderBy);
+  return converted;
 }
 
 /**

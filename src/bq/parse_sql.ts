@@ -85,3 +85,24 @@ export function toDbtRefFromTarget(fromTarget: string): string {
 
   return `{{ ref('${tableName}') }}`;
 }
+
+const BACKTICK_IDENTIFIER_REGEX = /`([^`]+)`/g;
+
+/**
+ * Pakeičia kvalifikuotus `` `proj.dataset.lentele` `` į `` {{ ref('lentele') }} ``.
+ * Neanalizuoja užklausos — veikia FROM, JOIN ir bet kur kitur.
+ */
+export function replaceQualifiedBackticksWithDbtRef(sql: string): string {
+  return sql.replace(BACKTICK_IDENTIFIER_REGEX, (full, inner: string) => {
+    if (!inner.includes('.')) {
+      return full;
+    }
+
+    const tableName = tableNameFromBackticks(`\`${inner}\``);
+    if (!tableName) {
+      return full;
+    }
+
+    return `{{ ref('${tableName}') }}`;
+  });
+}
