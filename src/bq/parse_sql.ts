@@ -25,6 +25,115 @@ const TRAILING_SPACES_REGEX = /[ \t\u00a0]+$/u;
 
 const LEADING_SPACES_REGEX = /^[ \t\u00a0]+/u;
 
+const SQL_KEYWORDS = [
+  'select',
+  'from',
+  'where',
+  'and',
+  'or',
+  'not',
+  'in',
+  'as',
+  'on',
+  'join',
+  'inner',
+  'left',
+  'right',
+  'full',
+  'cross',
+  'outer',
+  'group',
+  'by',
+  'order',
+  'limit',
+  'offset',
+  'having',
+  'union',
+  'all',
+  'distinct',
+  'case',
+  'when',
+  'then',
+  'else',
+  'end',
+  'cast',
+  'safe_cast',
+  'coalesce',
+  'nullif',
+  'between',
+  'like',
+  'is',
+  'null',
+  'true',
+  'false',
+  'asc',
+  'desc',
+  'nulls',
+  'first',
+  'last',
+  'over',
+  'partition',
+  'window',
+  'qualify',
+  'row_number',
+  'unbounded',
+  'preceding',
+  'following',
+  'current',
+  'row',
+  'with',
+  'recursive',
+  'except',
+  'intersect',
+  'using',
+  'unnest',
+  'datetime',
+  'timestamp',
+  'interval',
+  'extract',
+  'trim',
+  'int',
+  'int64',
+  'float64',
+  'numeric',
+  'string',
+  'bool',
+  'ignore',
+  'rows',
+  'range',
+  'day',
+  'month',
+  'year',
+  'date',
+];
+
+const LITERAL_OR_COMMENT_REGEX =
+  /(`[^`]*`|"(?:[^"\\]|\\.)*"|'(?:[^'\\]|\\.)*'|--[^\n]*|\/\*[\s\S]*?\*\/)/g;
+
+/**
+ * Mažosios raidės tik SQL raktažodžiams (ne lentelėms, stulpeliams, stringams).
+ */
+export function lowercaseSqlKeywords(sql: string): string {
+  const preserved: string[] = [];
+  const masked = sql.replace(LITERAL_OR_COMMENT_REGEX, match => {
+    preserved.push(match);
+    return `\x01${preserved.length - 1}\x01`;
+  });
+
+  const keywords = [...SQL_KEYWORDS].sort((a, b) => b.length - a.length);
+  let result = masked;
+
+  for (const keyword of keywords) {
+    const pattern = new RegExp(
+      `\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`,
+      'gi',
+    );
+    result = result.replace(pattern, keyword);
+  }
+
+  return result.replace(/\x01(\d+)\x01/g, (_, index) => preserved[+index]);
+}
+
 /**
  * Pašalina tarpus eilutės gale; jei eilutėje nėra raidžių – ir pradžioje.
  */

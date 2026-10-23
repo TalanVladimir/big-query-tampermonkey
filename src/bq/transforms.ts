@@ -5,6 +5,7 @@ import {
   SCD_ACTIVE_WHERE,
 } from '../constants';
 import {
+  lowercaseSqlKeywords,
   parseFromQuery,
   replaceQualifiedBackticksWithDbtRef,
   trimTrailingSpacesPerLine,
@@ -22,10 +23,10 @@ function buildSelectBlockLower(
   whereLine: string,
   orderBy: string | null,
 ): string {
-  const lines = ['select', '  *', `from ${fromLine}`, whereLine.toLowerCase()];
+  const lines = ['select', '  *', `from ${fromLine}`, whereLine];
 
   if (orderBy) {
-    lines.push(orderBy.toLowerCase());
+    lines.push(lowercaseSqlKeywords(orderBy));
   }
 
   return lines.join('\n');
@@ -62,7 +63,7 @@ export function transformToLowerWithPartition(sql: string): string {
     throw new Error('Nepavyko rasti FROM dalies užklausoje.');
   }
 
-  const fromLine = parsed.fromTarget.toLowerCase();
+  const fromLine = parsed.fromTarget;
   const body = buildSelectBlockLower(fromLine, PARTITION_WHERE, parsed.orderBy);
 
   return withEditorTrailingNewlines(`${body}\n${LIMIT_COMMENT}`);
@@ -77,7 +78,7 @@ export function transformToScdActiveLow(sql: string): string {
     throw new Error('Nepavyko rasti FROM dalies užklausoje.');
   }
 
-  const fromLine = parsed.fromTarget.toLowerCase();
+  const fromLine = parsed.fromTarget;
 
   return withEditorTrailingNewlines(
     buildSelectBlockLower(fromLine, SCD_ACTIVE_WHERE, null),
