@@ -1,8 +1,27 @@
+import { findBigQueryHostDocument } from './host_document';
+
+/**
+ * Dokumentas su BigQuery redaktoriumi.
+ */
+function getHostDocument(): Document {
+  const doc = findBigQueryHostDocument();
+  if (!doc) {
+    throw new Error('Nepavyko rasti BigQuery puslapio dokumento.');
+  }
+
+  return doc;
+}
+
 /**
  * Grąžina aktyvų / matomą Monaco redaktorių BigQuery konsolėje.
  */
 export function getActiveMonacoRoot(): HTMLElement | null {
-  const focused = document.querySelector(
+  const doc = findBigQueryHostDocument();
+  if (!doc) {
+    return null;
+  }
+
+  const focused = doc.querySelector(
     '.monaco-editor.focused',
   ) as HTMLElement | null;
 
@@ -11,7 +30,7 @@ export function getActiveMonacoRoot(): HTMLElement | null {
   }
 
   const editors = Array.from(
-    document.querySelectorAll('.monaco-editor'),
+    doc.querySelectorAll('.monaco-editor'),
   ) as HTMLElement[];
 
   for (const editor of editors) {
@@ -61,9 +80,11 @@ export function writeActiveEditorSql(sql: string): void {
     throw new Error('Nepavyko pasiekti redaktoriaus teksto lauko.');
   }
 
+  const view = root.ownerDocument.defaultView ?? window;
+
   textarea.focus();
   textarea.select();
-  const inserted = document.execCommand('insertText', false, sql);
+  const inserted = view.document.execCommand('insertText', false, sql);
 
   if (!inserted) {
     textarea.value = sql;
@@ -75,17 +96,20 @@ export function writeActiveEditorSql(sql: string): void {
  * Kopijuoja tekstą į iškarpinę.
  */
 export async function copyToClipboard(text: string): Promise<void> {
-  if (navigator.clipboard?.writeText) {
-    await navigator.clipboard.writeText(text);
+  const hostWin = getHostDocument().defaultView ?? window;
+
+  if (hostWin.navigator.clipboard?.writeText) {
+    await hostWin.navigator.clipboard.writeText(text);
     return;
   }
 
-  const area = document.createElement('textarea');
+  const doc = getHostDocument();
+  const area = doc.createElement('textarea');
   area.value = text;
   area.style.position = 'fixed';
   area.style.left = '-9999px';
-  document.body.appendChild(area);
+  doc.body.appendChild(area);
   area.select();
-  document.execCommand('copy');
+  doc.execCommand('copy');
   area.remove();
 }

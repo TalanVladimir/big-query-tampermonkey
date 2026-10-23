@@ -14,6 +14,8 @@ import './styles.scss';
 type PanelPosition = { left: number; top: number };
 
 export class PanelClass {
+  private hostDoc: Document;
+  private hostWin: Window;
   private root: HTMLElement;
   private dragHandle: HTMLElement;
   private toast: HTMLElement;
@@ -26,20 +28,23 @@ export class PanelClass {
   /**
    * Sukuria tempiamą mygtukų panelę BigQuery SQL transformacijoms.
    */
-  constructor() {
-    this.root = document.createElement('div');
+  constructor(hostDoc: Document) {
+    this.hostDoc = hostDoc;
+    this.hostWin = hostDoc.defaultView ?? window;
+
+    this.root = hostDoc.createElement('div');
     this.root.id = 'bq-tm-panel';
     this.root.className = 'bq-tm-panel';
 
-    this.dragHandle = document.createElement('div');
+    this.dragHandle = hostDoc.createElement('div');
     this.dragHandle.className = 'bq-tm-panel__handle';
     this.dragHandle.textContent = 'BQ';
     this.dragHandle.title = 'Tempkite panelę';
 
-    this.toast = document.createElement('div');
+    this.toast = hostDoc.createElement('div');
     this.toast.className = 'bq-tm-panel__toast';
 
-    const actions = document.createElement('div');
+    const actions = hostDoc.createElement('div');
     actions.className = 'bq-tm-panel__actions';
 
     actions.appendChild(
@@ -64,7 +69,7 @@ export class PanelClass {
     this.applyStoredPosition();
     this.bindDrag();
 
-    document.body.appendChild(this.root);
+    hostDoc.body.appendChild(this.root);
   }
 
   /**
@@ -91,7 +96,7 @@ export class PanelClass {
     label: string,
     onClick: () => void,
   ): HTMLButtonElement {
-    const btn = document.createElement('button');
+    const btn = this.hostDoc.createElement('button');
     btn.type = 'button';
     btn.className = `bq-tm-panel__btn bq-tm-panel__btn--${cssMod}`;
     btn.textContent = label;
@@ -148,8 +153,8 @@ export class PanelClass {
     return (
       pos.left >= -margin &&
       pos.top >= -margin &&
-      pos.left < window.innerWidth - margin &&
-      pos.top < window.innerHeight - margin
+      pos.left < this.hostWin.innerWidth - margin &&
+      pos.top < this.hostWin.innerHeight - margin
     );
   }
 
@@ -170,7 +175,7 @@ export class PanelClass {
       this.root.style.bottom = 'auto';
     });
 
-    document.addEventListener('mousemove', event => {
+    this.hostWin.addEventListener('mousemove', event => {
       if (!this.dragging) {
         return;
       }
@@ -182,7 +187,7 @@ export class PanelClass {
       this.root.style.top = `${Math.max(0, top)}px`;
     });
 
-    document.addEventListener('mouseup', () => {
+    this.hostWin.addEventListener('mouseup', () => {
       if (!this.dragging) {
         return;
       }
@@ -196,7 +201,7 @@ export class PanelClass {
     this.toast.classList.toggle('bq-tm-panel__toast--error', isError);
     this.toast.classList.add('bq-tm-panel__toast--visible');
 
-    window.setTimeout(() => {
+    this.hostWin.setTimeout(() => {
       this.toast.classList.remove('bq-tm-panel__toast--visible');
     }, 2800);
   }
