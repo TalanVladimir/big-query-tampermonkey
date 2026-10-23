@@ -18,6 +18,7 @@ type MonacoWindow = Window & {
 const trackedDocuments = new WeakSet<Document>();
 
 let lastActiveMonacoRoot: HTMLElement | null = null;
+let lastMonacoEditor: MonacoEditorLike | null = null;
 
 /**
  * Dokumentas su BigQuery redaktoriumi.
@@ -51,10 +52,41 @@ export function trackActiveMonacoEditor(doc: Document): void {
       const root = target.closest('.monaco-editor');
       if (root instanceof HTMLElement) {
         lastActiveMonacoRoot = root;
+        const hostWin = (doc.defaultView ?? window) as MonacoWindow;
+        lastMonacoEditor =
+          getMonacoForRoot(root, hostWin) ?? findMonacoOnElement(root);
       }
     },
     true,
   );
+}
+
+/**
+ * Monaco ant DOM elemento (GCP kartais be window.monaco).
+ */
+function findMonacoOnElement(root: HTMLElement): MonacoEditorLike | null {
+  const record = root as HTMLElement & Record<string, unknown>;
+
+  for (const key of Object.keys(record)) {
+    if (!key.startsWith('__monaco')) {
+      continue;
+    }
+
+    const candidate = record[key];
+    if (
+      candidate &&
+      typeof candidate === 'object' &&
+      typeof (candidate as MonacoEditorLike).getValue === 'function'
+    ) {
+      return candidate as MonacoEditorLike;
+    }
+  }
+
+  const withEditor = root as HTMLElement & {
+    __monaco_editor__?: MonacoEditorLike;
+  };
+
+  return withEditor.__monaco_editor__ ?? null;
 }
 
 /**
@@ -72,17 +104,17 @@ function getMonacoForRoot(
       continue;
     }
 
+    if (root === node || root.contains(node) || node.contains(root)) {
+      return editor;
+    }
+
     const monacoRoot = node.closest('.monaco-editor');
-    if (monacoRoot === root || root.contains(node)) {
+    if (monacoRoot === root) {
       return editor;
     }
   }
 
-  const withEditor = root as HTMLElement & {
-    __monaco_editor__?: MonacoEditorLike;
-  };
-
-  return withEditor.__monaco_editor__ ?? null;
+  return findMonacoOnElement(root);
 }
 
 /**
@@ -128,7 +160,7 @@ export function getActiveMonacoRoot(): HTMLElement | null {
 }
 
 /**
- * Nuskaito SQL iš aktyvio (fokusuoto) Monaco textarea.
+ * Nuskaito visą SQL iš aktyvio query redaktoriaus (Monaco modelis, ne IME textarea).
  */
 export function readActiveEditorSql(): string {
   const doc = getHostDocument();
@@ -139,20 +171,25 @@ export function readActiveEditorSql(): string {
     throw new Error('Spustelėk į aktyvų query langą ir bandyk dar kartą.');
   }
 
+  const hostWin = (root.ownerDocument.defaultView ?? window) as MonacoWindow;
+  const monacoEditor =
+    lastActiveMonacoRoot === root && lastMonacoEditor
+      ? lastMonacoEditor
+      : getMonacoForRoot(root, hostWin);
+
+  if (monacoEditor) {
+    const fromMonaco = monacoEditor.getValue();
+    if (fromMonaco.length > 0) {
+      return fromMonaco;
+    }
+  }
+
   const textarea = root.querySelector(
     'textarea.inputarea',
   ) as HTMLTextAreaElement | null;
 
   if (textarea && textarea.value.length > 0) {
     return textarea.value;
-  }
-
-  const hostWin = (root.ownerDocument.defaultView ?? window) as MonacoWindow;
-  const monacoEditor = getMonacoForRoot(root, hostWin);
-  const fromMonaco = monacoEditor?.getValue() ?? '';
-
-  if (fromMonaco.trim()) {
-    return fromMonaco;
   }
 
   throw new Error(
