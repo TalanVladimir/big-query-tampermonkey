@@ -1,5 +1,18 @@
 import { findBigQueryHostDocument } from './host_document';
 
+type MonacoEditorLike = {
+  getValue: () => string;
+  hasTextFocus?: () => boolean;
+};
+
+type MonacoWindow = Window & {
+  monaco?: {
+    editor?: {
+      getEditors: () => MonacoEditorLike[];
+    };
+  };
+};
+
 /**
  * Dokumentas su BigQuery redaktoriumi.
  */
@@ -44,7 +57,44 @@ export function getActiveMonacoRoot(): HTMLElement | null {
 }
 
 /**
- * Nuskaito SQL tekstą iš Monaco input slaptažodžio lauko.
+ * Monaco instance iš globalaus API arba elemento.
+ */
+function getMonacoEditorInstance(
+  root: HTMLElement,
+): MonacoEditorLike | null {
+  const hostWin = (root.ownerDocument.defaultView ?? window) as MonacoWindow;
+  const editors = hostWin.monaco?.editor?.getEditors?.();
+
+  if (editors && editors.length > 0) {
+    const focused = editors.find(editor => editor.hasTextFocus?.());
+    return focused ?? editors[0];
+  }
+
+  const withEditor = root as HTMLElement & {
+    __monaco_editor__?: MonacoEditorLike;
+  };
+
+  return withEditor.__monaco_editor__ ?? null;
+}
+
+/**
+ * Tekstas iš Monaco view eilučių (atsarginis variantas).
+ */
+function readFromViewLines(root: HTMLElement): string | null {
+  const lineNodes = root.querySelectorAll('.view-lines .view-line');
+  if (lineNodes.length === 0) {
+    return null;
+  }
+
+  const lines = Array.from(lineNodes).map(
+    line => line.textContent?.replace(/\u00a0/g, ' ') ?? '',
+  );
+
+  return lines.join('\n');
+}
+
+/**
+ * Nuskaito SQL tekstą iš aktyvio redaktoriaus.
  */
 export function readActiveEditorSql(): string {
   const root = getActiveMonacoRoot();
@@ -52,15 +102,28 @@ export function readActiveEditorSql(): string {
     throw new Error('Nepavyko rasti BigQuery redaktoriaus.');
   }
 
+  const monacoEditor = getMonacoEditorInstance(root);
+  if (monacoEditor) {
+    const value = monacoEditor.getValue().trim();
+    if (value) {
+      return monacoEditor.getValue();
+    }
+  }
+
   const textarea = root.querySelector(
     'textarea.inputarea',
   ) as HTMLTextAreaElement | null;
 
-  if (!textarea || !textarea.value.trim()) {
-    throw new Error('Aktyvus redaktorius tuščias arba nepasiekiamas.');
+  if (textarea?.value.trim()) {
+    return textarea.value;
   }
 
-  return textarea.value;
+  const fromView = readFromViewLines(root);
+  if (fromView?.trim()) {
+    return fromView;
+  }
+
+  throw new Error('Aktyvus redaktorius tuščias arba nepasiekiamas.');
 }
 
 /**
@@ -70,6 +133,15 @@ export function writeActiveEditorSql(sql: string): void {
   const root = getActiveMonacoRoot();
   if (!root) {
     throw new Error('Nepavyko rasti BigQuery redaktoriaus.');
+  }
+
+  const monacoEditor = getMonacoEditorInstance(root) as MonacoEditorLike & {
+    setValue?: (value: string) => void;
+  };
+
+  if (monacoEditor?.setValue) {
+    monacoEditor.setValue(sql);
+    return;
   }
 
   const textarea = root.querySelector(

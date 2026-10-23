@@ -13,6 +13,18 @@ const ORDER_BY_REGEX = /\border\s+by\b[\s\S]*$/i;
 
 const WHERE_REGEX = /\bwhere\b([\s\S]*?)(?=\border\s+by\b|\blimit\b|$)/i;
 
+/** `proj`.`dataset`.`table` */
+const CHAINED_BACKTICK_TABLE_REGEX = /`[^`]+`(?:\.`[^`]+`)+/g;
+
+/** `project.dataset.table` */
+const BACKTICK_IDENTIFIER_REGEX = /`([^`]+)`/g;
+
+/**
+ * `proj.dataset.table` be backtick (BigQuery explorer kartais taip įrašo).
+ */
+const UNQUOTED_QUALIFIED_TABLE_REGEX =
+  /\b([A-Za-z_][\w-]*)\.([A-Za-z_][\w]*)\.([A-Za-z_][\w]*)\b/g;
+
 /**
  * Pašalina SQL komentarus ir sutraukia tarpus vienoje eilutėje analizei.
  */
@@ -83,26 +95,71 @@ export function toDbtRefFromTarget(fromTarget: string): string {
     return fromTarget;
   }
 
-  return `{{ ref('${tableName}') }}`;
+  return toDbtRef(tableName);
 }
 
-const BACKTICK_IDENTIFIER_REGEX = /`([^`]+)`/g;
+/**
+ * Suformuoja dbt ref('model') eilutę.
+ */
+function toDbtRef(tableName: string): string {
+  const safeName = tableName.replace(/'/g, "\\'");
+  return `{{ ref('${safeName}') }}`;
+}
 
 /**
- * Pakeičia kvalifikuotus `` `proj.dataset.lentele` `` į `` {{ ref('lentele') }} ``.
- * Neanalizuoja užklausos — veikia FROM, JOIN ir bet kur kitur.
+ * Paskutinis segmentas iš `a`.`b`.`c` arba `a.b.c`.
+ */
+function tableNameFromQualifiedPath(path: string): string | null {
+  const parts = path
+    .split('.')
+    .map(part => part.replace(/^`|`$/g, '').trim())
+    .filter(part => part.length > 0);
+
+  const name = parts[parts.length - 1];
+  return name ?? null;
+}
+
+/**
+ * Ar tekstas jau yra dbt ref.
+ */
+function isInsideDbtRef(sql: string, index: number): boolean {
+  const before = sql.slice(Math.max(0, index - 80), index);
+  return /\{\{\s*ref\s*\([^)]*$/i.test(before);
+}
+
+/**
+ * Pakeičia kvalifikuotas BigQuery lentelės nuorodas į dbt ref('...').
+ * Neanalizuoja užklausos — veikia FROM, JOIN, CTE ir kt.
  */
 export function replaceQualifiedBackticksWithDbtRef(sql: string): string {
-  return sql.replace(BACKTICK_IDENTIFIER_REGEX, (full, inner: string) => {
+  let result = sql.replace(CHAINED_BACKTICK_TABLE_REGEX, segment => {
+    const tableName = tableNameFromQualifiedPath(segment);
+    return tableName ? toDbtRef(tableName) : segment;
+  });
+
+  result = result.replace(BACKTICK_IDENTIFIER_REGEX, (full, inner: string) => {
     if (!inner.includes('.')) {
       return full;
     }
 
-    const tableName = tableNameFromBackticks(`\`${inner}\``);
+    const tableName = tableNameFromQualifiedPath(inner);
     if (!tableName) {
       return full;
     }
 
-    return `{{ ref('${tableName}') }}`;
+    return toDbtRef(tableName);
   });
+
+  result = result.replace(
+    UNQUOTED_QUALIFIED_TABLE_REGEX,
+    (full, _project, _dataset, table, offset) => {
+      if (isInsideDbtRef(result, offset)) {
+        return full;
+      }
+
+      return toDbtRef(table);
+    },
+  );
+
+  return result;
 }

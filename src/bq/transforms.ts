@@ -24,8 +24,10 @@ function buildSelectBlockLower(
 export function transformToDbtRef(sql: string): string {
   const converted = replaceQualifiedBackticksWithDbtRef(sql);
 
-  if (converted === sql && !/`[^`]*\.[^`]+`/.test(sql)) {
-    throw new Error('Nerasta kvalifikuotų lentelių su backtick (`proj.dataset.lentele`).');
+  if (!converted.includes("{{ ref(")) {
+    throw new Error(
+      'Nerasta lentelių `proj.dataset.lentele` arba proj.dataset.lentele formatu.',
+    );
   }
 
   return converted;
