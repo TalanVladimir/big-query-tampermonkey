@@ -1,13 +1,12 @@
 // ==UserScript==
 // @name            BigQuery (Tampermonkey)
-// @version         1.0.3
+// @version         1.0.5
 // @description     SQL transformacijos BigQuery redaktoriuje
 // @author          Vladimir Talan
 //
 // @include			*://console.cloud.google.com/bigquery*
-// @include			*://console.cloud.google.com/*
 //
 // @grant           none
-// @require         file:///C:/Users/vladimir.talan/_Repos/big-query-tampermonkey/dist/main.js
-// @run-at          document-idle
+// @require         https://raw.githubusercontent.com/TalanVladimir/big-query-tampermonkey/refs/heads/master/dist/main.js
+// @run-at          document-end
 // ==/UserScript==

@@ -13,25 +13,24 @@ Plėtinys BigQuery konsolės SQL redaktoriui (Google Cloud Console).
 ## Diegimas
 
 1. [Tampermonkey](https://chrome.google.com/webstore/detail/tampermonkey/dhdgffkkebhmkfjojejmpbldmpobfkfo).
-2. Chrome: **Tampermonkey → Settings → Security → Allow access to file URLs** (įjungta).
-3. Nukopijuokite arba importuokite [`tampermonkey/bigquery.user.js`](tampermonkey/bigquery.user.js) ir pakoreguokite `@require` kelią į savo `dist/main.js`.
+2. Nukopijuokite arba importuokite [`tampermonkey/bigquery.user.js`](tampermonkey/bigquery.user.js).
 
 ```text
 // @include			*://console.cloud.google.com/bigquery*
+// @require         https://raw.githubusercontent.com/TalanVladimir/big-query-tampermonkey/refs/heads/master/dist/main.js
 ```
-4. Po kiekvieno `npm run build` — **perkraukite BigQuery puslapį** (F5).
 
-> **Svarbu:** pakanka tik `main.js` — stiliai įdedami į JS bundle. `@resource main.css` nereikalingas (VIPA naudoja `GM_getResourceText`, čia naudojame `style-loader`).
+3. Po lokalaus `npm run build` — **commit + push** `dist/main.js` į `master`, tada BigQuery puslapyje F5 (Tampermonkey cache kartais reikia scripto per-save).
 
-### Patikra, ar scriptas veikia
+> Stiliai įdėti į `main.js` bundle (`style-loader`); atskiro CSS failo nereikia.
+
+### Patikra
 
 DevTools Console (`F12`):
 
 ```js
 document.getElementById('bq-tm-panel')
 ```
-
-Jei `null` — Tampermonkey skiltyje patikrinkite, ar scriptas **Enabled** ir ar nėra klaidų (raudonas skaičius prie scripto).
 
 ## Build
 
@@ -41,4 +40,4 @@ npm start    # dev + dist į diską
 npm run build
 ```
 
-Generuojamas `dist/main.js` (su įdėtu CSS).
+Generuojamas `dist/main.js` (su įdėtu CSS) — jį reikia turėti GitHub `master` šakoje, kad `@require` veiktų.

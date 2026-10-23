@@ -3,25 +3,6 @@ const MONACO_SELECTOR = '.monaco-editor';
 /**
  * Ar URL yra BigQuery konsolės puslapis.
  */
-/**
- * Ar scriptas paleistas BigQuery kontekste (šis langas arba top).
- */
-export function isBigQueryContext(): boolean {
-  if (isBigQueryPage(window.location.href)) {
-    return true;
-  }
-
-  try {
-    if (window.top && isBigQueryPage(window.top.location.href)) {
-      return true;
-    }
-  } catch {
-    return false;
-  }
-
-  return false;
-}
-
 export function isBigQueryPage(href: string): boolean {
   try {
     const url = new URL(href);
@@ -66,9 +47,7 @@ function findDocumentWithMonaco(doc: Document): Document | null {
 /**
  * Didžiausio matomo same-origin iframe dokumentas (GCP app shell).
  */
-function findLargestVisibleIframeDocument(
-  doc: Document,
-): Document | null {
+function findLargestVisibleIframeDocument(doc: Document): Document | null {
   let bestDoc: Document | null = null;
   let bestArea = 0;
 
