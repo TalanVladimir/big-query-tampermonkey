@@ -1,23 +1,5 @@
-const MiniCssExtractPlugin = require('mini-css-extract-plugin');
-
 module.exports = (env = false, argv = false) => {
   const { mode = 'development' } = argv;
-
-  const getStyleLoaders = () => {
-    return [MiniCssExtractPlugin.loader, 'css-loader'];
-  };
-
-  const getPlugins = () => {
-    const plugins = [];
-
-    plugins.push(
-      new MiniCssExtractPlugin({
-        filename: 'main.css',
-      }),
-    );
-
-    return plugins;
-  };
 
   return {
     mode,
@@ -45,19 +27,17 @@ module.exports = (env = false, argv = false) => {
 
         {
           test: /\.(css)$/,
-          use: getStyleLoaders(),
+          use: ['style-loader', 'css-loader'],
         },
 
         {
           test: /\.(s[ca]ss)$/,
-          use: [...getStyleLoaders(), 'sass-loader'],
+          use: ['style-loader', 'css-loader', 'sass-loader'],
         },
       ],
     },
 
     performance: { maxEntrypointSize: 512000, maxAssetSize: 512000 },
-
-    plugins: getPlugins(),
 
     devServer: {
       hot: true,

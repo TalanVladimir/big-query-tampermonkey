@@ -60,10 +60,30 @@ export class PanelClass {
     this.root.appendChild(actions);
     this.root.appendChild(this.toast);
 
+    this.applyInlineFallbackStyles();
     this.applyStoredPosition();
     this.bindDrag();
 
     document.body.appendChild(this.root);
+  }
+
+  /**
+   * Minimalūs stiliai, jei SCSS neįsikrauna (pvz. tik @require be CSS).
+   */
+  private applyInlineFallbackStyles(): void {
+    Object.assign(this.root.style, {
+      position: 'fixed',
+      zIndex: '2147483646',
+      display: 'flex',
+      flexDirection: 'column',
+      gap: '6px',
+      padding: '8px',
+      borderRadius: '10px',
+      background: '#1a1a2e',
+      border: '1px solid #3d3d5c',
+      boxShadow: '0 4px 20px rgba(0, 0, 0, 0.45)',
+      maxWidth: '220px',
+    });
   }
 
   private createActionButton(
@@ -97,13 +117,40 @@ export class PanelClass {
 
     try {
       const pos = JSON.parse(raw) as PanelPosition;
-      this.root.style.left = `${pos.left}px`;
-      this.root.style.top = `${pos.top}px`;
-      this.root.style.bottom = 'auto';
+      if (this.isPositionOnScreen(pos)) {
+        this.root.style.left = `${pos.left}px`;
+        this.root.style.top = `${pos.top}px`;
+        this.root.style.bottom = 'auto';
+        return;
+      }
+      localStorage.removeItem(STORAGE_POSITION);
     } catch {
-      this.root.style.left = '16px';
-      this.root.style.bottom = '16px';
+      /* naudojame numatytąją poziciją */
     }
+
+    this.setDefaultPosition();
+  }
+
+  /**
+   * Numatyta pozicija — kairė apačia.
+   */
+  private setDefaultPosition(): void {
+    this.root.style.left = '16px';
+    this.root.style.bottom = '16px';
+    this.root.style.top = 'auto';
+  }
+
+  /**
+   * Patikrina, ar panelė matoma ekrane.
+   */
+  private isPositionOnScreen(pos: PanelPosition): boolean {
+    const margin = 40;
+    return (
+      pos.left >= -margin &&
+      pos.top >= -margin &&
+      pos.left < window.innerWidth - margin &&
+      pos.top < window.innerHeight - margin
+    );
   }
 
   private storePosition(): void {
