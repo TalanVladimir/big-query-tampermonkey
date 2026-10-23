@@ -102,6 +102,9 @@ export class PanelClass {
     btn.type = 'button';
     btn.className = `bq-tm-panel__btn bq-tm-panel__btn--${cssMod}`;
     btn.textContent = label;
+    btn.addEventListener('mousedown', event => {
+      event.preventDefault();
+    });
     btn.addEventListener('click', event => {
       event.stopPropagation();
       if (this.dragMoved) {

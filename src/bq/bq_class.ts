@@ -1,3 +1,4 @@
+import { trackActiveMonacoEditor } from './editor';
 import { findBigQueryHostDocument } from './host_document';
 import { PanelClass } from './panel_class';
 
@@ -27,6 +28,8 @@ export class BqClass {
     if (!hostDoc.body) {
       return;
     }
+
+    trackActiveMonacoEditor(hostDoc);
 
     if (hostDoc.getElementById(PANEL_ID)) {
       return;
