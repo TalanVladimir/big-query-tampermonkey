@@ -24,7 +24,6 @@ export class PanelClass {
   private dragOffsetX = 0;
   private dragOffsetY = 0;
   private dragMoved = false;
-  private sqlSnapshot: string | null = null;
 
   /**
    * Sukuria tempiamą mygtukų panelę BigQuery SQL transformacijoms.
@@ -105,11 +104,6 @@ export class PanelClass {
     btn.textContent = label;
     btn.addEventListener('mousedown', event => {
       event.preventDefault();
-      try {
-        this.sqlSnapshot = readActiveEditorSql();
-      } catch {
-        this.sqlSnapshot = null;
-      }
     });
     btn.addEventListener('click', event => {
       event.stopPropagation();
@@ -217,22 +211,9 @@ export class PanelClass {
     }, 2800);
   }
 
-  /**
-   * SQL iš mousedown momento (kol fokusas dar redaktoriuje) arba dabar.
-   */
-  private readSqlForAction(): string {
-    if (this.sqlSnapshot) {
-      const snapshot = this.sqlSnapshot;
-      this.sqlSnapshot = null;
-      return snapshot;
-    }
-
-    return readActiveEditorSql();
-  }
-
   private async onDbtRef(): Promise<void> {
     try {
-      const sql = this.readSqlForAction();
+      const sql = await readActiveEditorSql();
       const converted = transformToDbtRef(sql);
       await copyToClipboard(converted);
       this.showToast('Nukopijuota (dbt ref)');
@@ -243,9 +224,9 @@ export class PanelClass {
     }
   }
 
-  private onLowerPartition(): void {
+  private async onLowerPartition(): Promise<void> {
     try {
-      const sql = this.readSqlForAction();
+      const sql = await readActiveEditorSql();
       const converted = transformToLowerWithPartition(sql);
       writeActiveEditorSql(converted);
       this.showToast('Atnaujinta (low + partition)');
@@ -256,9 +237,9 @@ export class PanelClass {
     }
   }
 
-  private onScdLow(): void {
+  private async onScdLow(): Promise<void> {
     try {
-      const sql = this.readSqlForAction();
+      const sql = await readActiveEditorSql();
       const converted = transformToScdActiveLow(sql);
       writeActiveEditorSql(converted);
       this.showToast('Atnaujinta (scd active)');

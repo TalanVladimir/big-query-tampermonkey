@@ -256,34 +256,63 @@ function pickLongestText(candidates: string[]): string {
 }
 
 /**
- * Ar tekstas atrodo sutrumpintas, palyginus su matomomis eilutėmis.
+ * Ar SQL atrodo sutrumpintas (dažna Monaco/BQ klaida).
  */
-function looksTruncated(sql: string, root: HTMLElement): boolean {
-  const visibleLines = root.querySelectorAll('.view-line').length;
-  if (visibleLines < 20) {
-    return false;
-  }
-
+function looksTruncatedSql(sql: string): boolean {
   if (!/\bwith\b/i.test(sql)) {
     return false;
   }
 
-  const newlineCount = (sql.match(/\n/g) ?? []).length;
-  return newlineCount + 5 < visibleLines || sql.length < 1200;
+  const fromCount = (sql.match(/\bfrom\b/gi) ?? []).length;
+
+  if (fromCount >= 8 || sql.length >= 4500) {
+    return false;
+  }
+
+  if (fromCount <= 2 && sql.length < 6000) {
+    return true;
+  }
+
+  return sql.length < 1000;
 }
 
 /**
- * Nuskaito visą SQL iš aktyvio query redaktoriaus.
+ * Nuskaito SQL per Select All + Copy + clipboard (pilnas query tekstas BQ).
  */
-export function readActiveEditorSql(): string {
-  const doc = getHostDocument();
-  trackActiveMonacoEditor(doc);
-
-  const root = getActiveMonacoRoot();
-  if (!root) {
-    throw new Error('Spustelėk į aktyvų query langą ir bandyk dar kartą.');
+async function tryReadViaClipboardCopy(root: HTMLElement): Promise<string> {
+  const win = root.ownerDocument?.defaultView;
+  if (!win) {
+    return '';
   }
 
+  const textarea = root.querySelector(
+    'textarea.inputarea',
+  ) as HTMLTextAreaElement | null;
+
+  if (textarea) {
+    textarea.focus();
+  } else {
+    root.focus();
+  }
+
+  win.document.execCommand('selectAll');
+  win.document.execCommand('copy');
+
+  if (!win.navigator.clipboard?.readText) {
+    return '';
+  }
+
+  try {
+    return await win.navigator.clipboard.readText();
+  } catch {
+    return '';
+  }
+}
+
+/**
+ * Surenka SQL kandidatus iš aktyvio redaktoriaus.
+ */
+function collectSqlCandidates(root: HTMLElement): string[] {
   const candidates: string[] = [];
 
   const monacoEditor = resolveMonacoEditor(root);
@@ -301,7 +330,25 @@ export function readActiveEditorSql(): string {
     candidates.push(textarea.value);
   }
 
-  const sql = pickLongestText(candidates.filter(text => text.length > 0));
+  return candidates.filter(text => text.length > 0);
+}
+
+/**
+ * Nuskaito visą SQL iš aktyvio query redaktoriaus.
+ */
+export async function readActiveEditorSql(): Promise<string> {
+  const doc = getHostDocument();
+  trackActiveMonacoEditor(doc);
+
+  const root = getActiveMonacoRoot();
+  if (!root) {
+    throw new Error('Spustelėk į aktyvų query langą ir bandyk dar kartą.');
+  }
+
+  const candidates = collectSqlCandidates(root);
+  candidates.push(await tryReadViaClipboardCopy(root));
+
+  const sql = pickLongestText(candidates);
 
   if (!sql.trim()) {
     throw new Error(
@@ -309,9 +356,9 @@ export function readActiveEditorSql(): string {
     );
   }
 
-  if (looksTruncated(sql, root)) {
+  if (looksTruncatedSql(sql)) {
     throw new Error(
-      'Nuskaitytas ne visas SQL — spustelėk redaktorių, Ctrl+A ir bandyk copy dar kartą.',
+      'Nuskaitytas ne visas SQL — spustelėk redaktorių, Ctrl+A, tada copy dar kartą.',
     );
   }
 
