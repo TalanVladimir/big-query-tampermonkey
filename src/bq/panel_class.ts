@@ -48,17 +48,19 @@ export class PanelClass {
     actions.className = 'bq-tm-panel__actions';
 
     actions.appendChild(
-      this.createActionButton('ref', 'dbt ref → clipboard', () =>
+      this.createActionButton('ref', "clipboard > ref('table')", () =>
         this.onDbtRef(),
       ),
     );
     actions.appendChild(
-      this.createActionButton('low', 'low + partition', () =>
+      this.createActionButton('low', "partition_date > '2020-01-01'", () =>
         this.onLowerPartition(),
       ),
     );
     actions.appendChild(
-      this.createActionButton('scd', 'scd active low', () => this.onScdLow()),
+      this.createActionButton('scd', 'scd_is_active = true', () =>
+        this.onScdLow(),
+      ),
     );
 
     this.root.appendChild(this.dragHandle);

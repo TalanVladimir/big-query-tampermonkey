@@ -1,12 +1,5 @@
-import {
-  LIMIT_COMMENT,
-  PARTITION_WHERE,
-  SCD_ACTIVE_WHERE,
-} from '../constants';
-import {
-  parseFromQuery,
-  toDbtRefFromTarget,
-} from './parse_sql';
+import { LIMIT_COMMENT, PARTITION_WHERE, SCD_ACTIVE_WHERE } from '../constants';
+import { parseFromQuery, toDbtRefFromTarget } from './parse_sql';
 
 function buildSelectBlockLower(
   fromLine: string,
