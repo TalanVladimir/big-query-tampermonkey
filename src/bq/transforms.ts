@@ -1,4 +1,9 @@
-import { LIMIT_COMMENT, PARTITION_WHERE, SCD_ACTIVE_WHERE } from '../constants';
+import {
+  EDITOR_TRAILING_NEWLINES,
+  LIMIT_COMMENT,
+  PARTITION_WHERE,
+  SCD_ACTIVE_WHERE,
+} from '../constants';
 import {
   parseFromQuery,
   replaceQualifiedBackticksWithDbtRef,
@@ -16,6 +21,13 @@ function buildSelectBlockLower(
   }
 
   return lines.join('\n');
+}
+
+/**
+ * Prideda dvi tuščias eilutes redaktoriaus pabaigoje.
+ */
+function withEditorTrailingNewlines(sql: string): string {
+  return `${sql.replace(/\s+$/, '')}${EDITOR_TRAILING_NEWLINES}`;
 }
 
 /**
@@ -45,7 +57,7 @@ export function transformToLowerWithPartition(sql: string): string {
   const fromLine = parsed.fromTarget.toLowerCase();
   const body = buildSelectBlockLower(fromLine, PARTITION_WHERE, parsed.orderBy);
 
-  return `${body}\n${LIMIT_COMMENT}`;
+  return withEditorTrailingNewlines(`${body}\n${LIMIT_COMMENT}`);
 }
 
 /**
@@ -59,5 +71,7 @@ export function transformToScdActiveLow(sql: string): string {
 
   const fromLine = parsed.fromTarget.toLowerCase();
 
-  return buildSelectBlockLower(fromLine, SCD_ACTIVE_WHERE, null);
+  return withEditorTrailingNewlines(
+    buildSelectBlockLower(fromLine, SCD_ACTIVE_WHERE, null),
+  );
 }
