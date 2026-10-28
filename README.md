@@ -6,9 +6,8 @@ Plėtinys BigQuery konsolės SQL redaktoriui (Google Cloud Console).
 
 | Mygtukas | Veiksmas |
 |----------|----------|
-| **dbt ref → clipboard** | Aktyvios užklausos `FROM \`proj.dataset.lentele\`` → `{{ ref('lentele') }}`, suformatuota su `*`, nukopijuota į iškarpinę |
-| **low + partition** | Pakeičia redaktoriuje: mažosios raidės, `select` / `*` / `from`, `where partition_date > '2020-01-01'`, pabaigoje `--limit 1000` |
-| **scd active low** | Pakeičia redaktoriuje: mažosios raidės, `*`, `where scd_is_active = true` (pašalina SCD datos filtrą ir LIMIT) |
+| **dbt ref → clipboard** | Aktyvios užklausos kvalifikuotos lentelės → `{{ ref('lentele') }}`, nukopijuota į iškarpinę (redaktorius nekeičiamas) |
+| **1 eil. → format + filtras** | Tik **vienos eilutės** užklausa. Formatavimas: `select` / `*` / `from` (kiekviena dalis naujoje eilutėje), pabaigoje `--limit 1000`. Pagal FROM kelią: `raw_` → `where partition_date > '2020-01-01'`; `stg_` → `where scd_is_active = true`; kitaip be WHERE. Veikia ir su `select from ...` (tuščias SELECT sąrašas), ir su `select \`stulpelis\` from ...`. |
 
 ## Diegimas
 

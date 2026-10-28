@@ -4,6 +4,9 @@ export type ParsedFromQuery = {
   otherWhere: string | null;
 };
 
+/** raw_ / stg_ sluoksnis pagal FROM objektą (dataset arba lentelės pavadinimas). */
+export type BqLayerKind = 'raw' | 'stg' | 'default';
+
 const FROM_REGEX =
   /\bfrom\s+((?:`[^`]+`|'[^']+'|\{\{\s*ref\s*\([^)]+\)\s*\}\}))\s*/i;
 
@@ -166,6 +169,50 @@ export function collapseSql(sql: string): string {
     .replace(/\/\*[\s\S]*?\*\//g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+/**
+ * Metama klaida, jei užklausa užima daugiau nei vieną netuščią eilutę.
+ */
+export function assertSingleLineSql(sql: string): void {
+  const nonEmptyLines = trimTrailingSpacesPerLine(sql)
+    .split(/\r\n|\r|\n/)
+    .filter(line => line.trim().length > 0);
+
+  if (nonEmptyLines.length !== 1) {
+    throw new Error('Užklausa turi būti vienoje eilutėje.');
+  }
+}
+
+/**
+ * Ar tarp SELECT ir FROM nėra stulpelių (pvz. `select from ...`).
+ */
+export function isSelectListEmpty(sql: string): boolean {
+  const normalized = collapseSql(sql);
+  const match = normalized.match(/\bselect\s+(.*?)\s+from\b/is);
+
+  if (!match) {
+    throw new Error('Nepavyko rasti SELECT ... FROM.');
+  }
+
+  return match[1].trim().length === 0;
+}
+
+/**
+ * Nustato filtrą pagal raw_ / stg_ FROM kelio tekste.
+ */
+export function classifyFromTargetKind(fromTarget: string): BqLayerKind {
+  const lower = fromTarget.toLowerCase();
+
+  if (lower.includes('raw_')) {
+    return 'raw';
+  }
+
+  if (lower.includes('stg_')) {
+    return 'stg';
+  }
+
+  return 'default';
 }
 
 /**

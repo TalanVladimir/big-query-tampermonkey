@@ -5,31 +5,25 @@ import {
   SCD_ACTIVE_WHERE,
 } from '../constants';
 import {
+  assertSingleLineSql,
+  BqLayerKind,
+  classifyFromTargetKind,
   lowercaseSqlKeywords,
   parseFromQuery,
   replaceQualifiedBackticksWithDbtRef,
   trimTrailingSpacesPerLine,
 } from './parse_sql';
 
+export type SmartTransformResult = {
+  kind: BqLayerKind;
+  sql: string;
+};
+
 /**
  * Normalizuoja BQ nukopijuotą tekstą prieš transformaciją.
  */
 function normalizeInputSql(sql: string): string {
   return trimTrailingSpacesPerLine(sql);
-}
-
-function buildSelectBlockLower(
-  fromLine: string,
-  whereLine: string,
-  orderBy: string | null,
-): string {
-  const lines = ['select', '  *', `from ${fromLine}`, whereLine];
-
-  if (orderBy) {
-    lines.push(lowercaseSqlKeywords(orderBy));
-  }
-
-  return lines.join('\n');
 }
 
 /**
@@ -55,32 +49,42 @@ export function transformToDbtRef(sql: string): string {
 }
 
 /**
- * Mažosiomis raidėmis, su *, partition_date filtru ir užkomentuotu limit.
+ * Vienos eilutės užklausa → formatuotas SELECT * (raw: partition, stg: scd, kitaip be WHERE).
  */
-export function transformToLowerWithPartition(sql: string): string {
-  const parsed = parseFromQuery(normalizeInputSql(sql));
+export function transformSmartSingleLine(sql: string): SmartTransformResult {
+  const normalized = normalizeInputSql(sql);
+  assertSingleLineSql(normalized);
+
+  const parsed = parseFromQuery(normalized);
   if (!parsed) {
     throw new Error('Nepavyko rasti FROM dalies užklausoje.');
   }
 
+  const kind = classifyFromTargetKind(parsed.fromTarget);
   const fromLine = parsed.fromTarget;
-  const body = buildSelectBlockLower(fromLine, PARTITION_WHERE, parsed.orderBy);
 
-  return withEditorTrailingNewlines(`${body}\n${LIMIT_COMMENT}`);
-}
-
-/**
- * Mažosiomis raidėmis, su * ir scd_is_active filtru (SCD užklausoms).
- */
-export function transformToScdActiveLow(sql: string): string {
-  const parsed = parseFromQuery(normalizeInputSql(sql));
-  if (!parsed) {
-    throw new Error('Nepavyko rasti FROM dalies užklausoje.');
+  let whereLine: string | null = null;
+  if (kind === 'raw') {
+    whereLine = PARTITION_WHERE;
+  } else if (kind === 'stg') {
+    whereLine = SCD_ACTIVE_WHERE;
   }
 
-  const fromLine = parsed.fromTarget;
+  const lines = ['select', '  *', `from ${fromLine}`];
 
-  return withEditorTrailingNewlines(
-    buildSelectBlockLower(fromLine, SCD_ACTIVE_WHERE, null),
-  );
+  if (whereLine) {
+    lines.push(whereLine);
+  }
+
+  if (parsed.orderBy) {
+    lines.push(lowercaseSqlKeywords(parsed.orderBy));
+  }
+
+  const body = lines.join('\n');
+  const withLimit = `${body}\n${LIMIT_COMMENT}`;
+
+  return {
+    kind,
+    sql: withEditorTrailingNewlines(withLimit),
+  };
 }

@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name            BigQuery (Tampermonkey)
-// @version         1.0.6
+// @version         1.0.7
 // @description     SQL transformacijos BigQuery redaktoriuje
 // @author          Vladimir Talan
 //

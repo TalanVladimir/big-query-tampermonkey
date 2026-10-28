@@ -6,5 +6,5 @@ export const SCD_ACTIVE_WHERE = 'where scd_is_active = true';
 
 export const LIMIT_COMMENT = '--limit 1000';
 
-/** Pabaigoje: dvi tuščios eilutės (mygtukai 2 ir 3). */
+/** Pabaigoje: dvi tuščios eilutės po auto-formatavimo. */
 export const EDITOR_TRAILING_NEWLINES = '\n\n\n';

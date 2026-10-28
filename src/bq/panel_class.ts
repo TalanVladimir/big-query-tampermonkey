@@ -4,11 +4,7 @@ import {
   readActiveEditorSql,
   writeActiveEditorSql,
 } from './editor';
-import {
-  transformToDbtRef,
-  transformToLowerWithPartition,
-  transformToScdActiveLow,
-} from './transforms';
+import { transformSmartSingleLine, transformToDbtRef } from './transforms';
 import './styles.scss';
 
 type PanelPosition = { left: number; top: number };
@@ -53,13 +49,8 @@ export class PanelClass {
       ),
     );
     actions.appendChild(
-      this.createActionButton('low', "partition_date > '2020-01-01'", () =>
-        this.onLowerPartition(),
-      ),
-    );
-    actions.appendChild(
-      this.createActionButton('scd', 'scd_is_active = true', () =>
-        this.onScdLow(),
+      this.createActionButton('fmt', '1 eil. → format + filtras', () =>
+        this.onSmartFormat(),
       ),
     );
 
@@ -224,25 +215,20 @@ export class PanelClass {
     }
   }
 
-  private async onLowerPartition(): Promise<void> {
+  private async onSmartFormat(): Promise<void> {
     try {
       const sql = await readActiveEditorSql();
-      const converted = transformToLowerWithPartition(sql);
+      const { kind, sql: converted } = transformSmartSingleLine(sql);
       writeActiveEditorSql(converted);
-      this.showToast('Atnaujinta (low + partition)');
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Nežinoma klaida';
-      this.showToast(message, true);
-    }
-  }
 
-  private async onScdLow(): Promise<void> {
-    try {
-      const sql = await readActiveEditorSql();
-      const converted = transformToScdActiveLow(sql);
-      writeActiveEditorSql(converted);
-      this.showToast('Atnaujinta (scd active)');
+      const label =
+        kind === 'raw'
+          ? 'raw → partition_date'
+          : kind === 'stg'
+            ? 'stg → scd_is_active'
+            : 'formatuota (--limit 1000)';
+
+      this.showToast(`Atnaujinta (${label})`);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Nežinoma klaida';
