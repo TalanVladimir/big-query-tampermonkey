@@ -22,11 +22,7 @@ const CHAINED_BACKTICK_TABLE_REGEX = /`[^`]+`(?:\.`[^`]+`)+/g;
 /** `project.dataset.table` */
 const BACKTICK_IDENTIFIER_REGEX = /`([^`]+)`/g;
 
-const LINE_LETTER_REGEX = /[A-Za-zĄČĘĖĮŠŲŪŽąčęėįšųūž]/;
-
 const TRAILING_SPACES_REGEX = /[ \t\u00a0]+$/u;
-
-const LEADING_SPACES_REGEX = /^[ \t\u00a0]+/u;
 
 const SQL_KEYWORDS = [
   'select',
@@ -138,15 +134,17 @@ export function lowercaseSqlKeywords(sql: string): string {
 }
 
 /**
- * Pašalina tarpus eilutės gale; jei eilutėje nėra raidžių – ir pradžioje.
+ * Pašalina tarpus eilutės gale. Visiškai tuščias eilutes normalizuoja į ``.
+ * Nekeičia leading indent eilutėse su `*`, `(`, skaičiais ir pan.
  */
 export function trimTrailingSpacesPerLine(sql: string): string {
   return sql
     .split(/\r\n|\r|\n/)
     .map(line => {
       const withoutTrailing = line.replace(TRAILING_SPACES_REGEX, '');
-      if (!LINE_LETTER_REGEX.test(withoutTrailing)) {
-        return withoutTrailing.replace(LEADING_SPACES_REGEX, '');
+
+      if (withoutTrailing.trim().length === 0) {
+        return '';
       }
 
       return withoutTrailing;
