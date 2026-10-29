@@ -4,7 +4,8 @@ import {
   readActiveEditorSql,
   writeActiveEditorSql,
 } from './editor';
-import { transformSmartSingleLine, transformToDbtRef } from './transforms';
+import { containsDbtRefMacro } from './parse_sql';
+import { transformSmartSingleLine, transformSqlForClipboard } from './transforms';
 import './styles.scss';
 
 type PanelPosition = { left: number; top: number };
@@ -44,8 +45,8 @@ export class PanelClass {
     actions.className = 'bq-tm-panel__actions';
 
     actions.appendChild(
-      this.createActionButton('ref', "clipboard > ref('table')", () =>
-        this.onDbtRef(),
+      this.createActionButton('ref', "ref → BQ / kopijuoti", () =>
+        this.onCopySql(),
       ),
     );
     actions.appendChild(
@@ -202,12 +203,13 @@ export class PanelClass {
     }, 2800);
   }
 
-  private async onDbtRef(): Promise<void> {
+  private async onCopySql(): Promise<void> {
     try {
       const sql = await readActiveEditorSql();
-      const converted = transformToDbtRef(sql);
+      const hadRef = containsDbtRefMacro(sql);
+      const converted = transformSqlForClipboard(sql);
       await copyToClipboard(converted);
-      this.showToast('Nukopijuota (dbt ref)');
+      this.showToast(hadRef ? 'Nukopijuota (ref → BQ)' : 'Nukopijuota');
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Nežinoma klaida';

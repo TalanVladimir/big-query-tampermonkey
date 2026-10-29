@@ -1,4 +1,5 @@
 import {
+  BQ_DBT_PROJECT,
   EDITOR_TRAILING_NEWLINES,
   LIMIT_COMMENT,
   PARTITION_WHERE,
@@ -8,9 +9,10 @@ import {
   assertSingleLineSql,
   BqLayerKind,
   classifyFromTargetKind,
+  containsDbtRefMacro,
   lowercaseSqlKeywords,
   parseFromQuery,
-  replaceQualifiedBackticksWithDbtRef,
+  replaceDbtRefWithQualifiedBackticks,
   trimTrailingSpacesPerLine,
 } from './parse_sql';
 
@@ -34,18 +36,16 @@ function withEditorTrailingNewlines(sql: string): string {
 }
 
 /**
- * Kopijavimui: tik `` `...` `` → `` {{ ref('...') }} `` (visa kita lieka).
+ * Kopijavimui: jei yra {{ ref() }} → pilni BQ keliai; kitaip tas pats SQL.
  */
-export function transformToDbtRef(sql: string): string {
-  const converted = replaceQualifiedBackticksWithDbtRef(normalizeInputSql(sql));
+export function transformSqlForClipboard(sql: string): string {
+  const normalized = normalizeInputSql(sql);
 
-  if (!converted.includes("{{ ref(")) {
-    throw new Error(
-      'Nerasta lentelių `proj.dataset.lentele` arba proj.dataset.lentele formatu.',
-    );
+  if (!containsDbtRefMacro(normalized)) {
+    return normalized;
   }
 
-  return converted;
+  return replaceDbtRefWithQualifiedBackticks(normalized, BQ_DBT_PROJECT);
 }
 
 /**

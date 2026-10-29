@@ -283,6 +283,89 @@ function toDbtRef(tableName: string): string {
   return `{{ ref('${safeName}') }}`;
 }
 
+/** `{{ ref('model_name') }}` arba ref("..."). */
+const DBT_REF_MACRO_REGEX =
+  /\{\{\s*ref\s*\(\s*(['"])([^'"]+)\1\s*\)\s*\}\}/gi;
+
+/**
+ * Ar SQL tekste yra dbt ref() makro.
+ */
+export function containsDbtRefMacro(sql: string): boolean {
+  DBT_REF_MACRO_REGEX.lastIndex = 0;
+  return DBT_REF_MACRO_REGEX.test(sql);
+}
+
+/**
+ * Nustato BigQuery dataset pagal dbt modelio pavadinimo prefiksą.
+ */
+export function dbtDatasetForModelName(modelName: string): string {
+  if (modelName.startsWith('stg_')) {
+    return 'dbt_staging';
+  }
+
+  if (modelName.startsWith('int_')) {
+    return 'dbt_intermediate';
+  }
+
+  if (modelName.startsWith('mart')) {
+    return 'dbt_marts';
+  }
+
+  if (modelName.startsWith('seed_')) {
+    return 'dbt_seeds';
+  }
+
+  if (
+    modelName.startsWith('dim_') ||
+    modelName.startsWith('fact_') ||
+    modelName.startsWith('fct_') ||
+    modelName.startsWith('bridge_')
+  ) {
+    return 'dbt_core';
+  }
+
+  throw new Error(
+    `Nežinomas dbt sluoksnis modeliui „${modelName}“ (stg_, int_, mart_, raw_…).`,
+  );
+}
+
+/**
+ * raw_navision__Lentele → `proj.raw_navision.Lentele`.
+ * Kiti modeliai → `proj.dbt_staging.model_name` ir pan.
+ */
+export function qualifiedBackticksForDbtModel(
+  modelName: string,
+  project = 'ilte-analytics',
+): string {
+  if (modelName.startsWith('raw_')) {
+    const separator = modelName.indexOf('__');
+    if (separator > 0) {
+      const dataset = modelName.slice(0, separator);
+      const table = modelName.slice(separator + 2);
+      return `\`${project}.${dataset}.${table}\``;
+    }
+
+    return `\`${project}.${modelName}\``;
+  }
+
+  const dataset = dbtDatasetForModelName(modelName);
+  return `\`${project}.${dataset}.${modelName}\``;
+}
+
+/**
+ * Pakeičia visus {{ ref('...') }} į pilnus BigQuery lentelių kelius.
+ */
+export function replaceDbtRefWithQualifiedBackticks(
+  sql: string,
+  project = 'ilte-analytics',
+): string {
+  DBT_REF_MACRO_REGEX.lastIndex = 0;
+
+  return sql.replace(DBT_REF_MACRO_REGEX, (_full, _quote, modelName: string) =>
+    qualifiedBackticksForDbtModel(modelName, project),
+  );
+}
+
 /**
  * Paskutinis segmentas iš `a`.`b`.`c` arba `a.b.c`.
  */
