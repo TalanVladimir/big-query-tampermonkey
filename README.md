@@ -6,7 +6,7 @@ Plėtinys BigQuery konsolės SQL redaktoriui (Google Cloud Console).
 
 | Mygtukas | Veiksmas |
 |----------|----------|
-| **ref → BQ / kopijuoti** | Aktyvios užklausos SQL į iškarpinę. Jei yra `{{ ref('...') }}` — pakeičiama į `` `ilte-analytics.<dataset>.<modelis>` `` (`stg_` → `dbt_staging`, `int_` → `dbt_intermediate`, `mart…` → `dbt_marts`, `raw_…__…` → `raw_<šaltinis>.<lentelė>`). Be ref — kopijuojama kaip yra. |
+| **ref → BQ / kopijuoti** | SQL į iškarpinę. **ref → BQ:** `{{ ref('stg_…') }}` → `` `ilte-analytics.dbt_staging.stg_…` `` (ir analogiškai `int_`, `mart…`, `raw_…__…`). **BQ → ref:** `` `ilte-analytics.dbt_*.modelis` `` → `{{ ref('modelis') }}`. Jei nei ref, nei dbt BQ keliai — kopijuojama kaip yra. |
 | **1 eil. → format + filtras** | Tik **vienos eilutės** užklausa. Formatavimas: `select` / `*` / `from` (kiekviena dalis naujoje eilutėje), pabaigoje `--limit 1000`. Pagal FROM kelią: `raw_` → `where partition_date > '2020-01-01'`; `stg_` → `where scd_is_active = true`; kitaip be WHERE. Veikia ir su `select from ...` (tuščias SELECT sąrašas), ir su `select \`stulpelis\` from ...`. |
 
 ## Diegimas

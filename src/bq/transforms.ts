@@ -13,6 +13,7 @@ import {
   lowercaseSqlKeywords,
   parseFromQuery,
   replaceDbtRefWithQualifiedBackticks,
+  replaceQualifiedBackticksWithDbtRef,
   trimTrailingSpacesPerLine,
 } from './parse_sql';
 
@@ -36,16 +37,21 @@ function withEditorTrailingNewlines(sql: string): string {
 }
 
 /**
- * Kopijavimui: jei yra {{ ref() }} → pilni BQ keliai; kitaip tas pats SQL.
+ * Kopijavimui: ref → BQ keliai; BQ dbt lentelės → ref; kitaip tas pats SQL.
  */
 export function transformSqlForClipboard(sql: string): string {
   const normalized = normalizeInputSql(sql);
 
-  if (!containsDbtRefMacro(normalized)) {
-    return normalized;
+  if (containsDbtRefMacro(normalized)) {
+    return replaceDbtRefWithQualifiedBackticks(normalized, BQ_DBT_PROJECT);
   }
 
-  return replaceDbtRefWithQualifiedBackticks(normalized, BQ_DBT_PROJECT);
+  const toRef = replaceQualifiedBackticksWithDbtRef(normalized);
+  if (toRef.includes("{{ ref(")) {
+    return toRef;
+  }
+
+  return normalized;
 }
 
 /**

@@ -209,7 +209,12 @@ export class PanelClass {
       const hadRef = containsDbtRefMacro(sql);
       const converted = transformSqlForClipboard(sql);
       await copyToClipboard(converted);
-      this.showToast(hadRef ? 'Nukopijuota (ref → BQ)' : 'Nukopijuota');
+      const toastMessage = hadRef
+        ? 'Nukopijuota (ref → BQ)'
+        : converted.includes("{{ ref(")
+          ? 'Nukopijuota (BQ → ref)'
+          : 'Nukopijuota';
+      this.showToast(toastMessage);
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Nežinoma klaida';
