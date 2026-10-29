@@ -1,7 +1,19 @@
 import { findBigQueryHostDocument } from './host_document';
 
+type MonacoRange = {
+  startLineNumber: number;
+  startColumn: number;
+  endLineNumber: number;
+  endColumn: number;
+};
+
+type MonacoSelection = MonacoRange & {
+  isEmpty?: () => boolean;
+};
+
 type MonacoTextModel = {
   getValue: () => string;
+  getValueInRange?: (range: MonacoRange) => string;
 };
 
 type MonacoEditorLike = {
@@ -9,7 +21,16 @@ type MonacoEditorLike = {
   hasTextFocus?: () => boolean;
   getDomNode?: () => HTMLElement | null;
   getModel?: () => MonacoTextModel | null;
+  getSelection?: () => MonacoSelection | null;
   setValue?: (value: string) => void;
+  executeEdits?: (
+    source: string,
+    edits: Array<{
+      range: MonacoRange;
+      text: string;
+      forceMoveMarkers?: boolean;
+    }>,
+  ) => void;
 };
 
 type MonacoWindow = Window & {
@@ -363,6 +384,96 @@ export async function readActiveEditorSql(): Promise<string> {
   }
 
   return sql;
+}
+
+/**
+ * Ar Monaco pažymėjimas ne tuščias.
+ */
+function isNonEmptyMonacoSelection(
+  selection: MonacoSelection | null | undefined,
+): selection is MonacoSelection {
+  if (!selection) {
+    return false;
+  }
+
+  if (selection.isEmpty?.()) {
+    return false;
+  }
+
+  return !(
+    selection.startLineNumber === selection.endLineNumber &&
+    selection.startColumn === selection.endColumn
+  );
+}
+
+export type ActiveEditorWriteContext = {
+  /** Tekstas, kurį transformuoti (pažymėjimas arba visas query). */
+  text: string;
+  /** Įrašo transformuotą tekstą atgal į redaktorių. */
+  replaceWith: (newText: string) => void;
+};
+
+/**
+ * Nuskaito pažymėtą SQL arba visą aktyvų query ir grąžina replace callback.
+ */
+export function getActiveEditorWriteContext(): ActiveEditorWriteContext {
+  const doc = getHostDocument();
+  trackActiveMonacoEditor(doc);
+
+  const root = getActiveMonacoRoot();
+  if (!root) {
+    throw new Error('Spustelėk į aktyvų query langą ir bandyk dar kartą.');
+  }
+
+  const monacoEditor = resolveMonacoEditor(root);
+  const selection = monacoEditor?.getSelection?.();
+  const model = monacoEditor?.getModel?.();
+
+  if (
+    monacoEditor &&
+    model?.getValueInRange &&
+    isNonEmptyMonacoSelection(selection)
+  ) {
+    const selectedText = model.getValueInRange(selection);
+
+    if (!selectedText.trim()) {
+      throw new Error('Pažymėjimas tuščias.');
+    }
+
+    return {
+      text: selectedText,
+      replaceWith: newText => {
+        if (monacoEditor.executeEdits) {
+          monacoEditor.executeEdits('bq-tm', [
+            { range: selection, text: newText, forceMoveMarkers: true },
+          ]);
+          return;
+        }
+
+        writeActiveEditorSql(newText);
+      },
+    };
+  }
+
+  const candidates = collectSqlCandidates(root);
+  const sql = pickLongestText(candidates);
+
+  if (!sql.trim()) {
+    throw new Error(
+      'Aktyvus query langas tuščias — pažymėk SQL arba spustelėk redaktorių.',
+    );
+  }
+
+  if (looksTruncatedSql(sql)) {
+    throw new Error(
+      'Nuskaitytas ne visas SQL — pažymėk tekstą arba Ctrl+A, tada bandyk dar kartą.',
+    );
+  }
+
+  return {
+    text: sql,
+    replaceWith: newText => writeActiveEditorSql(newText),
+  };
 }
 
 /**

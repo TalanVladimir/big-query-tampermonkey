@@ -7,7 +7,7 @@ Plėtinys BigQuery konsolės SQL redaktoriui (Google Cloud Console).
 | Mygtukas | Veiksmas |
 |----------|----------|
 | **code > ref** | `` `ilte-analytics.dbt_*.modelis` `` → `{{ ref('modelis') }}`, nukopijuota į iškarpinę |
-| **ref > full** | `{{ ref('…') }}` → `` `ilte-analytics.<dataset>.<modelis>` `` (`stg_` → `dbt_staging`, `int_` → `dbt_intermediate`, …); be ref — kopijuojama kaip yra |
+| **ref > full** | Pažymėtas tekstas (arba visas query) redaktoriuje: `{{ ref('…') }}` → `` `ilte-analytics.<dataset>.<modelis>` ``; ne kopijuoja |
 | **1 eil. → format + filtras** | Tik **vienos eilutės** užklausa. Formatavimas: `select` / `*` / `from` (kiekviena dalis naujoje eilutėje), pabaigoje `--limit 1000`. Pagal FROM kelią: `raw_` → `where partition_date > '2020-01-01'`; `stg_` → `where scd_is_active = true`; kitaip be WHERE. Veikia ir su `select from ...` (tuščias SELECT sąrašas), ir su `select \`stulpelis\` from ...`. |
 
 ## Diegimas

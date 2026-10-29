@@ -1,6 +1,7 @@
 import { STORAGE_POSITION } from '../constants';
 import {
   copyToClipboard,
+  getActiveEditorWriteContext,
   readActiveEditorSql,
   writeActiveEditorSql,
 } from './editor';
@@ -217,13 +218,16 @@ export class PanelClass {
     }
   }
 
-  private async onRefToFull(): Promise<void> {
+  private onRefToFull(): void {
     try {
-      const sql = await readActiveEditorSql();
-      const hadRef = containsDbtRefMacro(sql);
-      const converted = transformRefToFull(sql);
-      await copyToClipboard(converted);
-      this.showToast(hadRef ? 'Nukopijuota (ref → full)' : 'Nukopijuota');
+      const { text, replaceWith } = getActiveEditorWriteContext();
+
+      if (!containsDbtRefMacro(text)) {
+        throw new Error('Pažymėtame tekste nėra {{ ref(...) }}.');
+      }
+
+      replaceWith(transformRefToFull(text));
+      this.showToast('Atnaujinta (ref → full)');
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Nežinoma klaida';
