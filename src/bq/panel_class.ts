@@ -5,7 +5,7 @@ import {
   writeActiveEditorSql,
 } from './editor';
 import { containsDbtRefMacro } from './parse_sql';
-import { transformSmartSingleLine, transformSqlForClipboard } from './transforms';
+import { transformCodeToDbtRef, transformRefToFull, transformSmartSingleLine } from './transforms';
 import './styles.scss';
 
 type PanelPosition = { left: number; top: number };
@@ -45,9 +45,10 @@ export class PanelClass {
     actions.className = 'bq-tm-panel__actions';
 
     actions.appendChild(
-      this.createActionButton('ref', "ref → BQ / kopijuoti", () =>
-        this.onCopySql(),
-      ),
+      this.createActionButton('ref', 'code > ref', () => this.onCodeToRef()),
+    );
+    actions.appendChild(
+      this.createActionButton('full', 'ref > full', () => this.onRefToFull()),
     );
     actions.appendChild(
       this.createActionButton('fmt', '1 eil. → format + filtras', () =>
@@ -203,18 +204,26 @@ export class PanelClass {
     }, 2800);
   }
 
-  private async onCopySql(): Promise<void> {
+  private async onCodeToRef(): Promise<void> {
+    try {
+      const sql = await readActiveEditorSql();
+      const converted = transformCodeToDbtRef(sql);
+      await copyToClipboard(converted);
+      this.showToast('Nukopijuota (code → ref)');
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Nežinoma klaida';
+      this.showToast(message, true);
+    }
+  }
+
+  private async onRefToFull(): Promise<void> {
     try {
       const sql = await readActiveEditorSql();
       const hadRef = containsDbtRefMacro(sql);
-      const converted = transformSqlForClipboard(sql);
+      const converted = transformRefToFull(sql);
       await copyToClipboard(converted);
-      const toastMessage = hadRef
-        ? 'Nukopijuota (ref → BQ)'
-        : converted.includes("{{ ref(")
-          ? 'Nukopijuota (BQ → ref)'
-          : 'Nukopijuota';
-      this.showToast(toastMessage);
+      this.showToast(hadRef ? 'Nukopijuota (ref → full)' : 'Nukopijuota');
     } catch (error) {
       const message =
         error instanceof Error ? error.message : 'Nežinoma klaida';

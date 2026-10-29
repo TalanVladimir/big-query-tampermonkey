@@ -37,21 +37,31 @@ function withEditorTrailingNewlines(sql: string): string {
 }
 
 /**
- * Kopijavimui: ref → BQ keliai; BQ dbt lentelės → ref; kitaip tas pats SQL.
+ * code → ref: kvalifikuotos BQ lentelės → {{ ref('...') }} (clipboard).
  */
-export function transformSqlForClipboard(sql: string): string {
+export function transformCodeToDbtRef(sql: string): string {
+  const converted = replaceQualifiedBackticksWithDbtRef(normalizeInputSql(sql));
+
+  if (!converted.includes("{{ ref(")) {
+    throw new Error(
+      'Nerasta lentelių `proj.dataset.lentele` arba proj.dataset.lentele formatu.',
+    );
+  }
+
+  return converted;
+}
+
+/**
+ * ref → full: {{ ref('...') }} → pilni BQ keliai; be ref — tas pats SQL.
+ */
+export function transformRefToFull(sql: string): string {
   const normalized = normalizeInputSql(sql);
 
-  if (containsDbtRefMacro(normalized)) {
-    return replaceDbtRefWithQualifiedBackticks(normalized, BQ_DBT_PROJECT);
+  if (!containsDbtRefMacro(normalized)) {
+    return normalized;
   }
 
-  const toRef = replaceQualifiedBackticksWithDbtRef(normalized);
-  if (toRef.includes("{{ ref(")) {
-    return toRef;
-  }
-
-  return normalized;
+  return replaceDbtRefWithQualifiedBackticks(normalized, BQ_DBT_PROJECT);
 }
 
 /**
