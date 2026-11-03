@@ -311,7 +311,7 @@ export function dbtDatasetForModelName(modelName: string): string {
     return 'dbt_marts';
   }
 
-  if (modelName.startsWith('seed_')) {
+  if (modelName.startsWith('seeds_') || modelName.startsWith('seed_')) {
     return 'dbt_seeds';
   }
 
@@ -325,7 +325,7 @@ export function dbtDatasetForModelName(modelName: string): string {
   }
 
   throw new Error(
-    `Nežinomas dbt sluoksnis modeliui „${modelName}“ (stg_, int_, mart_, raw_…).`,
+    `Nežinomas dbt sluoksnis modeliui „${modelName}“ (stg_, int_, mart_, seeds_, raw_…).`,
   );
 }
 
