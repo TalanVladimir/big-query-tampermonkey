@@ -277,24 +277,36 @@ function pickLongestText(candidates: string[]): string {
 }
 
 /**
- * Ar SQL atrodo sutrumpintas (dažna Monaco/BQ klaida).
+ * Ar SQL atrodo nebaigtas (pvz. Monaco grąžino tik fragmentą).
  */
 function looksTruncatedSql(sql: string): boolean {
   if (!/\bwith\b/i.test(sql)) {
     return false;
   }
 
-  const fromCount = (sql.match(/\bfrom\b/gi) ?? []).length;
-
-  if (fromCount >= 8 || sql.length >= 4500) {
-    return false;
-  }
-
-  if (fromCount <= 2 && sql.length < 6000) {
+  const trimmed = sql.trimEnd();
+  if (!trimmed) {
     return true;
   }
 
-  return sql.length < 1000;
+  if (trimmed.endsWith(',') || trimmed.endsWith('(')) {
+    return true;
+  }
+
+  if (/\b(select|from|where|and|or|join|on|group|order|having|limit|as)\s*$/i.test(trimmed)) {
+    return true;
+  }
+
+  let parenDepth = 0;
+  for (const ch of trimmed) {
+    if (ch === '(') {
+      parenDepth += 1;
+    } else if (ch === ')') {
+      parenDepth -= 1;
+    }
+  }
+
+  return parenDepth !== 0;
 }
 
 /**
